@@ -26,7 +26,7 @@ This project is designed to help telecom businesses efficiently manage VoIP pric
 | Frontend    | React + Vite     |
 | Backend     | Node.js + Express|
 | Database    | MongoDB (Mongoose) |
-| Styling     | Tailwind CSS     |
+| Styling     | CSS     |
 | Versioning  | Git + GitHub     |
 
 ---
