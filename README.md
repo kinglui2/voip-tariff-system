@@ -1,7 +1,7 @@
 # VoIP Price List Consolidation Tool
 
 ## 📦 Project Name
-**Project Pricelist**
+**voip tariff system**
 
 ## 📄 Overview
 This project is designed to help telecom businesses efficiently manage VoIP price lists from multiple suppliers. It consolidates, analyzes, and exports optimized pricing data into a format compatible with VoipSwitch.
