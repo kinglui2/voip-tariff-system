@@ -31,6 +31,11 @@ const Supplier = {
     await pool.query('DELETE FROM suppliers WHERE id = ?', [id]);
     return { id };
   },
+
+  async getByName(name) {
+    const [rows] = await pool.query('SELECT * FROM suppliers WHERE name = ?', [name]);
+    return rows[0];
+  },
 };
 
 module.exports = Supplier; 

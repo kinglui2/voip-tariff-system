@@ -1,4 +1,5 @@
 const SupplierRate = require('../models/supplierRate.model');
+const Supplier = require('../models/supplier.model');
 const csv = require('csv-parse');
 const fs = require('fs');
 const path = require('path');
@@ -62,31 +63,43 @@ const supplierRateController = {
 
   async importCSV(req, res, next) {
     if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+    const supplierName = req.body.supplier_name && req.body.supplier_name.trim();
+    if (!supplierName) return res.status(400).json({ message: 'Supplier name is required' });
+    let supplier = await Supplier.getByName(supplierName);
+    if (!supplier) {
+      supplier = await Supplier.create({ name: supplierName });
+    }
+    const supplierId = supplier.id;
     const filePath = req.file.path;
     const results = [];
     const errors = [];
     const parser = fs.createReadStream(filePath).pipe(csv.parse({ columns: true, trim: true }));
     for await (const record of parser) {
+      // Skip empty or invalid rows
+      const prefix = record.prefix || record['Numbering plan'] || null;
+      const voice_rate = record.voice_rate || record['Rates per minute'] || null;
+      if (!prefix || !voice_rate) {
+        continue;
+      }
       try {
-        // Map CSV columns to DB fields (adjust as needed)
         const rate = {
-          supplier_id: record.supplier_id,
-          prefix: record.prefix,
-          description: record.description,
-          country: record.country,
-          voice_rate: record.voice_rate,
-          grace_period: record.grace_period,
-          minimal_time: record.minimal_time,
-          resolution: record.resolution,
-          rate_multiplier: record.rate_multiplier,
-          rate_addition: record.rate_addition,
-          surcharge_time: record.surcharge_time,
-          surcharge_amount: record.surcharge_amount,
-          time_from_day: record.time_from_day,
-          time_to_day: record.time_to_day,
-          time_from_hour: record.time_from_hour,
-          time_to_hour: record.time_to_hour,
-          is_sms: record.is_sms
+          supplier_id: supplierId,
+          prefix,
+          description: record.description || record.Destination || null,
+          country: record.country || null,
+          voice_rate,
+          grace_period: record.grace_period || null,
+          minimal_time: record.minimal_time || null,
+          resolution: record.resolution || null,
+          rate_multiplier: record.rate_multiplier || null,
+          rate_addition: record.rate_addition || null,
+          surcharge_time: record.surcharge_time || null,
+          surcharge_amount: record.surcharge_amount || null,
+          time_from_day: record.time_from_day || null,
+          time_to_day: record.time_to_day || null,
+          time_from_hour: record.time_from_hour || null,
+          time_to_hour: record.time_to_hour || null,
+          is_sms: record.is_sms || null
         };
         await SupplierRate.create(rate);
         results.push(rate);
