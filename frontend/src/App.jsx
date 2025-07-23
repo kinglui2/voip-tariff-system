@@ -441,14 +441,22 @@ function ImportRates() {
 
 function ExportRates() {
   const [downloading, setDownloading] = useState(false);
-  const [error, setError] = useState('');
 
   const handleExport = async () => {
     setDownloading(true);
-    setError('');
+    let toastId = toast.info('Exporting rates...', { autoClose: false });
     try {
       const res = await fetch('/api/consolidated-rates/export');
-      if (!res.ok) throw new Error('Failed to export rates');
+      if (!res.ok) {
+        let msg = 'Export failed.';
+        try {
+          const data = await res.json();
+          msg = data.message || msg;
+        } catch {}
+        toast.update(toastId, { render: msg, type: toast.TYPE.ERROR, autoClose: 4000 });
+        setDownloading(false);
+        return;
+      }
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -458,8 +466,9 @@ function ExportRates() {
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
+      toast.update(toastId, { render: 'Export successful! Downloading CSV.', type: toast.TYPE.SUCCESS, autoClose: 4000 });
     } catch {
-      setError('Export failed. Please try again.');
+      toast.update(toastId, { render: 'Export failed. Please try again.', type: toast.TYPE.ERROR, autoClose: 4000 });
     } finally {
       setDownloading(false);
     }
@@ -467,6 +476,7 @@ function ExportRates() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '60vh', justifyContent: 'center' }}>
+      <ToastContainer position="top-right" autoClose={4000} hideProgressBar={false} newestOnTop closeOnClick pauseOnFocusLoss draggable pauseOnHover />
       <div style={{ background: 'var(--color-bg-nav)', border: '1px solid var(--color-border)', borderRadius: 10, boxShadow: '0 2px 12px rgba(0,0,0,0.04)', padding: '2.5rem 2rem', minWidth: 350, maxWidth: 400, width: '100%' }}>
         <h2 style={{ marginTop: 0, marginBottom: 24, color: 'var(--color-text-main)', textAlign: 'center' }}>Export Consolidated Rates</h2>
         <button
@@ -490,7 +500,6 @@ function ExportRates() {
         >
           {downloading ? 'Exporting...' : 'Download CSV'}
         </button>
-        {error && <p style={{ color: '#d32f2f', textAlign: 'center', margin: 0 }}>{error}</p>}
         <p style={{ color: 'var(--color-text-muted)', fontSize: 14, marginTop: 18, textAlign: 'center' }}>
           This will generate and download the latest consolidated rates as a CSV file, ready for VoipSwitch import.
         </p>

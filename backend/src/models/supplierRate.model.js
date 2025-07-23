@@ -14,8 +14,8 @@ const SupplierRate = {
   async create(rate) {
     const [result] = await pool.query(
       `INSERT INTO supplier_rates
-      (supplier_id, prefix, description, country, voice_rate, grace_period, minimal_time, resolution, rate_multiplier, rate_addition, surcharge_time, surcharge_amount, time_from_day, time_to_day, time_from_hour, time_to_hour, is_sms)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (supplier_id, prefix, description, country, voice_rate, grace_period, minimal_time, resolution, rate_multiplier, rate_addition, surcharge_time, surcharge_amount, time_from_day, time_to_day, time_from_hour, time_to_hour, is_sms, effective_date, comments, round_rules)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         rate.supplier_id,
         rate.prefix,
@@ -33,7 +33,10 @@ const SupplierRate = {
         rate.time_to_day || null,
         rate.time_from_hour || null,
         rate.time_to_hour || null,
-        rate.is_sms || 0
+        rate.is_sms || 0,
+        rate.effective_date || null,
+        rate.comments || null,
+        rate.round_rules || null
       ]
     );
     return { id: result.insertId, ...rate };
@@ -58,7 +61,10 @@ const SupplierRate = {
         time_to_day = ?,
         time_from_hour = ?,
         time_to_hour = ?,
-        is_sms = ?
+        is_sms = ?,
+        effective_date = ?,
+        comments = ?,
+        round_rules = ?
       WHERE id = ?`,
       [
         rate.supplier_id,
@@ -78,6 +84,9 @@ const SupplierRate = {
         rate.time_from_hour || null,
         rate.time_to_hour || null,
         rate.is_sms || 0,
+        rate.effective_date || null,
+        rate.comments || null,
+        rate.round_rules || null,
         id
       ]
     );

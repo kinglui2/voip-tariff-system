@@ -1,12 +1,21 @@
 const pool = require('../config/db');
 
+/**
+ * Generate consolidated rates for all unique prefixes in supplier_rates.
+ * - For each prefix, selects the lowest and next-lowest rates (primary/backup).
+ * - Upserts into consolidated_rates table.
+ * - Removes obsolete consolidated_rates entries.
+ *
+ * This function is structured for easy future extension (e.g., currency conversion, advanced routing).
+ */
 async function generateConsolidatedRates() {
-  // Get all unique prefixes from supplier_rates
+  // Step 1: Get all unique prefixes from supplier_rates
   const [prefixRows] = await pool.query('SELECT DISTINCT prefix FROM supplier_rates');
   const prefixes = prefixRows.map(row => row.prefix);
 
-  // For each prefix, find the lowest and next-lowest rates
+  // Step 2: For each prefix, process rates
   for (const prefix of prefixes) {
+    // Fetch all rates for this prefix, sorted by voice_rate (asc), then supplier_id
     const [rates] = await pool.query(
       `SELECT * FROM supplier_rates WHERE prefix = ? ORDER BY voice_rate ASC, supplier_id ASC`,
       [prefix]
@@ -14,6 +23,24 @@ async function generateConsolidatedRates() {
     if (rates.length === 0) continue;
     const primary = rates[0];
     const backup = rates[1] || null;
+
+    // Prepare consolidated rate object (future: add currency, business rules here)
+    const consolidated = {
+      prefix: primary.prefix,
+      country: primary.country || null,
+      description: primary.description || null,
+      primary_supplier_id: primary.supplier_id,
+      primary_rate: primary.voice_rate,
+      backup_supplier_id: backup ? backup.supplier_id : null,
+      backup_rate: backup ? backup.voice_rate : null,
+      grace_period: primary.grace_period,
+      minimal_time: primary.minimal_time,
+      resolution: primary.resolution,
+      rate_multiplier: primary.rate_multiplier,
+      rate_addition: primary.rate_addition,
+      surcharge_time: primary.surcharge_time,
+      surcharge_amount: primary.surcharge_amount
+    };
 
     // Upsert into consolidated_rates
     const [existing] = await pool.query('SELECT id FROM consolidated_rates WHERE prefix = ?', [prefix]);
@@ -36,19 +63,19 @@ async function generateConsolidatedRates() {
           surcharge_amount = ?
         WHERE prefix = ?`,
         [
-          primary.country,
-          primary.description,
-          primary.supplier_id,
-          primary.voice_rate,
-          backup ? backup.supplier_id : null,
-          backup ? backup.voice_rate : null,
-          primary.grace_period,
-          primary.minimal_time,
-          primary.resolution,
-          primary.rate_multiplier,
-          primary.rate_addition,
-          primary.surcharge_time,
-          primary.surcharge_amount,
+          consolidated.country,
+          consolidated.description,
+          consolidated.primary_supplier_id,
+          consolidated.primary_rate,
+          consolidated.backup_supplier_id,
+          consolidated.backup_rate,
+          consolidated.grace_period,
+          consolidated.minimal_time,
+          consolidated.resolution,
+          consolidated.rate_multiplier,
+          consolidated.rate_addition,
+          consolidated.surcharge_time,
+          consolidated.surcharge_amount,
           prefix
         ]
       );
@@ -59,26 +86,26 @@ async function generateConsolidatedRates() {
           (prefix, country, description, primary_supplier_id, primary_rate, backup_supplier_id, backup_rate, grace_period, minimal_time, resolution, rate_multiplier, rate_addition, surcharge_time, surcharge_amount)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          primary.prefix,
-          primary.country,
-          primary.description,
-          primary.supplier_id,
-          primary.voice_rate,
-          backup ? backup.supplier_id : null,
-          backup ? backup.voice_rate : null,
-          primary.grace_period,
-          primary.minimal_time,
-          primary.resolution,
-          primary.rate_multiplier,
-          primary.rate_addition,
-          primary.surcharge_time,
-          primary.surcharge_amount
+          consolidated.prefix,
+          consolidated.country,
+          consolidated.description,
+          consolidated.primary_supplier_id,
+          consolidated.primary_rate,
+          consolidated.backup_supplier_id,
+          consolidated.backup_rate,
+          consolidated.grace_period,
+          consolidated.minimal_time,
+          consolidated.resolution,
+          consolidated.rate_multiplier,
+          consolidated.rate_addition,
+          consolidated.surcharge_time,
+          consolidated.surcharge_amount
         ]
       );
     }
   }
 
-  // Remove consolidated_rates entries for prefixes no longer in supplier_rates
+  // Step 3: Remove consolidated_rates entries for prefixes no longer in supplier_rates
   await pool.query(
     'DELETE FROM consolidated_rates WHERE prefix NOT IN (SELECT DISTINCT prefix FROM supplier_rates)'
   );

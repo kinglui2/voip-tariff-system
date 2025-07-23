@@ -28,6 +28,9 @@ const Supplier = {
   },
 
   async remove(id) {
+    // First delete all rates for this supplier
+    await pool.query('DELETE FROM supplier_rates WHERE supplier_id = ?', [id]);
+    // Then delete the supplier
     await pool.query('DELETE FROM suppliers WHERE id = ?', [id]);
     return { id };
   },

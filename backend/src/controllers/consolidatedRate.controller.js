@@ -68,9 +68,25 @@ const consolidatedRateController = {
     }
   },
 
+  /**
+   * Export all consolidated rates as a CSV file.
+   * - Automatically runs consolidation before exporting.
+   * - Uses a fixed field list for VoipSwitch compatibility.
+   * - Prepares for future customizations (e.g., currency, user-specific formats).
+   */
   async exportCSV(req, res, next) {
     try {
+      // Step 1: Run consolidation
+      const consolidationResult = await generateConsolidatedRates();
+      if (!consolidationResult || consolidationResult.error) {
+        return res.status(500).json({ message: consolidationResult?.error || 'Failed to consolidate rates.' });
+      }
+      // Step 2: Export consolidated rates
       const rates = await ConsolidatedRate.getAll();
+      if (!rates || rates.length === 0) {
+        return res.status(400).json({ message: 'No consolidated rates available to export.' });
+      }
+      // Define export fields (future: make configurable)
       const fields = [
         'prefix', 'country', 'description',
         'primary_supplier_id', 'primary_rate',
@@ -79,6 +95,7 @@ const consolidatedRateController = {
         'rate_multiplier', 'rate_addition',
         'surcharge_time', 'surcharge_amount', 'created_at'
       ];
+      // Prepare CSV parser (future: add transforms, currency, etc.)
       const parser = new Parser({ fields });
       const csv = parser.parse(rates);
       res.header('Content-Type', 'text/csv');
